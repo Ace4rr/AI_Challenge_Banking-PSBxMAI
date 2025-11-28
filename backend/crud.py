@@ -9,8 +9,8 @@ async def create_message(db: AsyncSession, user_id: int, text: str, classificati
     await db.refresh(msg)
     return msg
 
-async def create_user(db: AsyncSession, username: str, email: str, password: str):
-    user = models.User(username=username,enail=email,password=password)
+async def create_user(db: AsyncSession, username: str, email: str, password: str, role: str):
+    user = models.User(username=username,email=email,password=password,role=role)
     db.add(user)
     await db.commit()
     await db.refresh(user)

@@ -31,7 +31,7 @@ async def register(user: schemas.UserCreate, db: AsyncSession=Depends(get_db)):
     existing = await crud.get_user_by_username(db,user.username)
     if existing:
         return{"error":"User already exists"}
-    new_user=await crud.create_user(db,user.username,user.email,user.password)
+    new_user=await crud.create_user(db,user.username,user.email,user.password,user.role)
     return new_user
 
 @app.post("/login")
