@@ -1,19 +1,24 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from .database import engine, Base, get_db
+from . import crud, ai, schemas
+from sqlalchemy.ext.asyncio import AsyncSession
 
-app = FastAPI(
-    title="IceCoffee Project",
-    description="Test file main.py",
-    version="1.0.0"
-)
+app = FastAPI()
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World!"}
+@app.on_event("startup")
+async def startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello, {name}!"}
+@app.post("/analyze")
+async def analyze(payload: schemas.MessageCreate, db: AsyncSession = Depends(get_db)):
+    text = payload.text
+    classification = ai.classify_text(text)
+    answer = ai.generate_answer(classification, text)
 
-@app.post("/message")
-async def create_message(message: str):
-    return {"received_message": message, "status": "Message received successfully"}
+    msg = await crud.create_message(db, text, classification, answer)
+    return msg
+
+@app.get("/messages")
+async def list_messages(db: AsyncSession = Depends(get_db)):
+    return await crud.get_messages(db)
