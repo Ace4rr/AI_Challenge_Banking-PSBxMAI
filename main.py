@@ -46,7 +46,7 @@ load_dotenv()
 
 gigachat_client = None
 try:
-    GIGACHAT_KEY = os.getenv("GIGACHAT_API_KEY")
+    GIGACHAT_KEY = "MDE5YWNhODEtNTE1Yy03ZmJmLTg2MmEtZDg0YzFiOGExODZlOmE3Zjc4MDdkLTRjOTgtNGFkOC1iOTFkLWRjNWY1NzExYTAyNA=="
     
     if GIGACHAT_KEY:
         print("Инициализация GigaChat клиента...")
