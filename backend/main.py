@@ -1,5 +1,7 @@
+# main.py
 from fastapi import FastAPI, Depends
-from .database import engine, Base, get_db
+# Теперь импортируем только то, что нужно
+from .database import get_db, create_db_and_tables # <-- Добавьте create_db_and_tables
 from . import crud, ai, schemas
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,8 +9,11 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Используем новую функцию для создания файла БД и таблицы
+    await create_db_and_tables() 
+    print("Database and tables created successfully!")
+
+# ... остальной код роутов остается прежним
 
 @app.post("/analyze")
 async def analyze(payload: schemas.MessageCreate, db: AsyncSession = Depends(get_db)):

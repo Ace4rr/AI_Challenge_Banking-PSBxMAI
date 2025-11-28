@@ -1,6 +1,7 @@
+# models.py
 from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.sql import func
-from .database import Base
+from .database import Base # Убедитесь, что импорт идет из .database
 
 class Message(Base):
     __tablename__ = "messages"
