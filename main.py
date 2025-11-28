@@ -1,38 +1,67 @@
 import os
 import json
+import requests
+import warnings
+from io import BytesIO
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-# from gigachat import GigaChat # Раскомментировать, когда вы получите библиотеку GigaChat
 
-# ----------------------------------------------------
-# 1. КОНФИГУРАЦИЯ БЕЗОПАСНОСТИ (GIGACHAT)
-# ----------------------------------------------------
+# Импорты для парсинга
+from pypdf import PdfReader
+from docx import Document
+from gigachat import GigaChat
+
+try:
+    requests.packages.urllib3.disable_warnings()
+    warnings.filterwarnings("ignore")
+except Exception:
+    pass
+
+def extract_text_from_pdf(file_bytes: bytes) -> str:
+    """Извлекает текст из PDF-файла, используя pypdf."""
+    try:
+        pdf_file = BytesIO(file_bytes)
+        reader = PdfReader(pdf_file)
+        text = ""
+        for page in reader.pages:
+            if page.extract_text():
+                text += page.extract_text() + "\n"
+        return text
+    except Exception as e:
+        return f"Парсинг PDF не удался: {e}"
+
+def extract_text_from_docx(file_bytes: bytes) -> str:
+    """Извлекает текст из DOCX-файла, используя python-docx."""
+    try:
+        document = Document(BytesIO(file_bytes))
+        text = "\n".join([paragraph.text for paragraph in document.paragraphs])
+        return text
+    except Exception as e:
+        return f"Парсинг DOCX не удался: {e}"
+
 
 load_dotenv()
-
-# Инициализация GigaChat клиента (используем заглушку, пока не настроен ключ)
-# В РЕАЛЬНОМ ПРОЕКТЕ: здесь будет инициализация GigaChat, настроенная на ваш 
-# локальный (on-premise) endpoint, как мы обсуждали ранее.
 
 gigachat_client = None
 try:
     GIGACHAT_KEY = os.getenv("GIGACHAT_API_KEY")
+    
     if GIGACHAT_KEY:
-        # gigachat_client = GigaChat(credentials=GIGACHAT_KEY, verify_ssl=False)
-        # ВРЕМЕННАЯ ЗАГЛУШКА для тестирования:
-        print("GigaChat key found, but client is temporarily disabled for testing.")
-        pass 
+        print("Инициализация GigaChat клиента...")
+        gigachat_client = GigaChat(
+            credentials=GIGACHAT_KEY,
+            profanity=False,
+            ssl_verify=False,
+            verify_ssl_certs=False,
+            verify_ssl=False
+        )
     else:
         print("WARNING: GIGACHAT_API_KEY not set. Using test data.")
 
 except Exception as e:
     print(f"Ошибка инициализации GigaChat: {e}")
-
-# ----------------------------------------------------
-# 2. МОДЕЛИ ДАННЫХ (Pydantic)
-# ----------------------------------------------------
 
 class AIResponse(BaseModel):
     """Модель структурированного ответа от AI."""
@@ -40,9 +69,6 @@ class AIResponse(BaseModel):
     reply_draft: str
     summary: str
 
-# ----------------------------------------------------
-# 3. НАСТРОЙКА FASTAPI И CORS
-# ----------------------------------------------------
 
 app = FastAPI(
     title="GigaChat Banking Assistant",
@@ -50,11 +76,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# КОНФИГУРАЦИЯ CORS
-# Добавляем ваш React-порт (5173), чтобы избежать "Network Error"
 origins = [
-    "http://localhost:5173",  # Порт, на котором у вас сейчас запущен React (Vite)
-    "http://localhost:3000",  # Стандартный порт для React (create-react-app)
+    "http://localhost:5173",
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
@@ -65,44 +89,88 @@ app.add_middleware(
     allow_headers=["*"], 
 )
 
-# ----------------------------------------------------
-# 4. ОСНОВНОЙ ЭНДПОИНТ (с обработкой файла)
-# ----------------------------------------------------
 
 @app.post("/analyze_email", response_model=AIResponse)
 async def analyze_email_with_gigachat(file: UploadFile = File(...)):
     """Принимает файл, извлекает текст и отправляет его в GigaChat."""
     
-    # 1. Чтение файла
+    # 1. Чтение и Парсинг Файла
     try:
         file_contents = await file.read()
-        
-        # NOTE: Здесь должен быть код парсинга PDF/DOCX в зависимости от file.filename
-        
-        # Предполагаем, что это текстовый файл (txt, eml)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Не удалось прочитать файл.")
+    
+    file_name = file.filename.lower()
+    
+    if file_name.endswith(('.txt', '.eml')):
         email_content = file_contents.decode("utf-8", errors="ignore")
+    elif file_name.endswith('.pdf'):
+        email_content = extract_text_from_pdf(file_contents)
+    elif file_name.endswith('.docx'):
+        email_content = extract_text_from_docx(file_contents)
+    else:
+        raise HTTPException(status_code=400, detail="Неподдерживаемый формат файла.")
+
+    if not email_content or email_content.startswith("Парсинг"):
+        raise HTTPException(status_code=400, detail="Не удалось извлечь текст из файла.")
+
+
+    # 2. Формирование промта
+    system_prompt = """
+    Ты — умный ассистент банка, твой ответ будет использоваться для мгновенного ответа клиенту.
+    Проанализируй входящее письмо. 
+    1. Определи категорию (JSON Key: "category") строго из списка: 'Предложение о партнерстве', 'Жалоба на сервис', 'Запрос на кредит', 'Предложение о работе банку', 'Спам'.
+    2. Напиши вежливый, официальный, но краткий черновик ответа (JSON Key: "reply_draft"), используя официальный тон банка.
+    3. Создай краткое резюме (JSON Key: "summary") письма для внутреннего использования.
+    
+    Верни ответ СТРОГО в формате JSON с ТОЛЬКО этими тремя ключами: "category", "reply_draft", "summary". Не добавляй никаких пояснений или дополнительного текста вне JSON.
+    """
+    
+    # Объединение промптов
+    full_prompt = f"""
+    {system_prompt}
+    
+    --- ДАННЫЕ ДЛЯ АНАЛИЗА ---
+    
+    Текст письма:
+    {email_content}
+    """
         
+
+    try:
+        # 4. Вызов GigaChat API
+        response = gigachat_client.chat(full_prompt)
+        
+        ai_response_str = response.choices[0].message.content
+
+        ai_response_str = ai_response_str.strip()
+        
+
+        if ai_response_str.startswith("```json"):
+            ai_response_str = ai_response_str[len("```json"):].strip()
+            
+
+        if ai_response_str.endswith("```"):
+            ai_response_str = ai_response_str[:-len("```")].strip()
+            
+
+        result_data = json.loads(ai_response_str)
+
+        # 6. Валидация и возврат
+        return AIResponse(
+            category=result_data.get("category", "Ошибка классификации"),
+            reply_draft=result_data.get("reply_draft", "Ошибка генерации ответа."),
+            summary=result_data.get("summary", "Ошибка генерации резюме.")
+        )
+        
+    except json.JSONDecodeError:
+        print(f"GigaChat вернул невалидный JSON: {ai_response_str}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"AI вернул невалидный JSON. Полученный текст: {ai_response_str[:200]}..."
+        )
     except Exception as e:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Не удалось прочитать файл: {e}"
+            status_code=500, 
+            detail=f"Ошибка связи с GigaChat: {e}"
         )
-
-    # 2. Формирование PROMPT
-    # ... (Тот же промпт, что и раньше)
-    
-    # ВРЕМЕННАЯ ЗАГЛУШКА для проверки соединения с React
-    if not gigachat_client:
-        test_content = f"Анализ письма: '{email_content[:50]}...'"
-        
-        # Если GigaChat не настроен, возвращаем тестовый ответ
-        return AIResponse(
-            category="Жалоба (ТЕСТ)",
-            reply_draft=f"Уважаемый клиент! Мы получили ваше письмо. {test_content} Спасибо за обращение!",
-            summary=f"Письмо успешно прочитано. Тестовый анализ: {test_content}"
-        )
-
-    # 3. Вызов GigaChat API (будет активирован, когда ключ будет настроен)
-    # ... (логика вызова gigachat_client.chat)
-    
-    # ... (логика возврата реального AIResponse)

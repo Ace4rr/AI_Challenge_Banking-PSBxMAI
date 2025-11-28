@@ -1,6 +1,8 @@
-fastapi==0.122.0
-uvicorn==0.38.0
+fastapi==0.122.0 
+uvicorn==0.38.0 
 gigachat
 python-dotenv
-python-multipart  # Для обработки загруженных файлов
-# (starlette обычно идет с FastAPI, но на всякий случай)
+python-multipart
+pypdf
+python-docx
+requests
