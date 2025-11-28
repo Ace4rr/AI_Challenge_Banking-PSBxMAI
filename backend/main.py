@@ -1,19 +1,29 @@
 # main.py
 from fastapi import FastAPI, Depends
-# Теперь импортируем только то, что нужно
-from .database import get_db, create_db_and_tables # <-- Добавьте create_db_and_tables
+# НОВЫЙ ИМПОРТ:
+from contextlib import asynccontextmanager 
+# Теперь импортируем из database только get_db и create_db_and_tables
+from .database import get_db, create_db_and_tables 
 from . import crud, ai, schemas
 from sqlalchemy.ext.asyncio import AsyncSession
 
-app = FastAPI()
-
-@app.on_event("startup")
-async def startup():
-    # Используем новую функцию для создания файла БД и таблицы
+# 1. Используем менеджер контекста для жизненного цикла приложения
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- КОД ЗАПУСКА (СТАРТАП) ---
     await create_db_and_tables() 
     print("Database and tables created successfully!")
+    
+    yield # Приложение начинает принимать запросы
+    
+    # --- КОД ОСТАНОВКИ (ШАТДАУН) ---
+    print("Application shutting down...")
 
-# ... остальной код роутов остается прежним
+# 2. Инициализируем FastAPI с аргументом lifespan
+app = FastAPI(lifespan=lifespan) 
+
+
+# --- РОУТЫ ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ ---
 
 @app.post("/analyze")
 async def analyze(payload: schemas.MessageCreate, db: AsyncSession = Depends(get_db)):
