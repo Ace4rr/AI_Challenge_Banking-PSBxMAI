@@ -14,3 +14,17 @@ class MessageOut(BaseModel):
 
     class Config:
         orm_mode = True
+        
+class UserCreate(BaseModel):
+    username:str
+    email: str
+    password: str 
+
+class UserOut(BaseModel):
+    id: int 
+    username: int 
+    email: str
+
+    class Config:
+        orm_mode=True
+

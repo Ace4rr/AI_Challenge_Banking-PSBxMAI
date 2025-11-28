@@ -10,3 +10,11 @@ class Message(Base):
     classification = Column(Text)
     generated_answer = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(Text, unique=True, nullable=False)
+    email = Column(Text, unique=True, nullable=False)
+    password = Column(Text, nullable=False)
+    messages = relationship("Message", back_populates="user")
