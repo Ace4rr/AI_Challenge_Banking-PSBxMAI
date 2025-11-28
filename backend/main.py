@@ -23,9 +23,7 @@ async def analyze(payload: schemas.MessageCreate,user_id:int, db: AsyncSession =
     classification = ai.classify_text(text)
     answer = ai.generate_answer(classification, text)
 
-    msg = await crud.create_message(db, text, classification, answer)
-    msg.user_id=user_id
-    await db.commit()
+    msg = await crud.create_message(db, user_id, text, classification, answer)
     return msg
 
 @app.post("/register",response_model=schemas.UserOut)
@@ -46,3 +44,7 @@ async def login(user: schemas.UserCreate,db:AsyncSession=Depends(get_db)):
 @app.get("/messages")
 async def list_messages(db: AsyncSession = Depends(get_db)):
     return await crud.get_messages(db)
+
+@app.get("/messages/{user_id}")
+async def user_messages(user_id: int, db: AsyncSession = Depends(get_db)):
+    return await crud.get_messages_by_user(db, user_id)
