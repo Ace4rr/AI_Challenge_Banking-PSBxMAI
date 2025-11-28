@@ -1,29 +1,21 @@
-# main.py
 from fastapi import FastAPI, Depends
-# НОВЫЙ ИМПОРТ:
 from contextlib import asynccontextmanager 
-# Теперь импортируем из database только get_db и create_db_and_tables
 from .database import get_db, create_db_and_tables 
 from . import crud, ai, schemas
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# 1. Используем менеджер контекста для жизненного цикла приложения
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- КОД ЗАПУСКА (СТАРТАП) ---
     await create_db_and_tables() 
     print("Database and tables created successfully!")
     
-    yield # Приложение начинает принимать запросы
+    yield
     
-    # --- КОД ОСТАНОВКИ (ШАТДАУН) ---
     print("Application shutting down...")
 
-# 2. Инициализируем FastAPI с аргументом lifespan
 app = FastAPI(lifespan=lifespan) 
 
-
-# --- РОУТЫ ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ ---
 
 @app.post("/analyze")
 async def analyze(payload: schemas.MessageCreate,user_id:int, db: AsyncSession = Depends(get_db)):
@@ -38,6 +30,7 @@ async def analyze(payload: schemas.MessageCreate,user_id:int, db: AsyncSession =
 
 @app.post("/register",response_model=schemas.UserOut)
 async def register(user: schemas.UserCreate, db: AsyncSession=Depends(get_db)):
+    existing = await crud.get_user_by_username(db,user.username)
     if existing:
         return{"error":"User already exists"}
     new_user=await crud.create_user(db,user.username,user.email,user.password)
