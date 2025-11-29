@@ -17,7 +17,7 @@ const Chat = () => {
     const { user, handleLogout } = useAuth();
     const navigate = useNavigate();
 
-    const [messages, setMessages] = useState<MessageProps[]>([]);
+    const [messages, setMessages] = useState<MessageProps[]>([]);   
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);

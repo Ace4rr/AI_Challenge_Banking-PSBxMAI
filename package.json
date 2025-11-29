@@ -2,7 +2,7 @@
   "scripts": {
     "start": "concurrently \"npm run frontend\" \"npm run backend\"",
     "frontend": "npm --prefix ./frontend run dev",
-    "backend": "uvicorn backend.main:app --reload"
+    "backend": "uvicorn backend.main:app --reload" 
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
