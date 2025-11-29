@@ -71,7 +71,7 @@ export default function Index() {
           <h1 className="text-4xl md:text-[60px] font-semibold leading-[110%] tracking-[-1.8px] text-black font-raleway mb-8 md:mb-12">
             Добрый день!
             <br />
-            Меня зовут Захар.
+            Я — ваш виртуальный ассистент.
           </h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -148,12 +148,13 @@ export default function Index() {
             className="w-[320px] md:w-[400px] h-[82px] rounded-full bg-[#8FB8FF] shadow-[0_8px_4px_0_rgba(0,0,0,0.5)] flex items-center justify-center hover:bg-[#7DA7EE] transition-all"
           >
             <span className="text-2xl md:text-[30px] font-semibold leading-[110%] tracking-[-0.9px] text-black font-raleway">
-              Перейти в чат с Захаром
+              Перейти в чат
             </span>
           </motion.button>
         </Link>
 
-        <p className="text-xl md:text-[30px] font-semibold leading-[110%] tracking-[-0.9px] text-black font-raleway mt-8 text-center max-w-[630px]">
+        {/* Изменения здесь: уменьшен размер текста, уменьшен font-weight, добавлена полупрозрачность */}
+        <p className="text-lg md:text-xl font-medium leading-[110%] tracking-[-0.6px] text-black/60 font-raleway mt-8 text-center max-w-[630px]">
           (для использования потребуется зарегистрироваться)
         </p>
 
