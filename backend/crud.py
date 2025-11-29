@@ -10,7 +10,7 @@ async def create_message(db: AsyncSession, text: str, classification: str, answe
         input_text=text, 
         classification=classification, 
         generated_answer=answer, 
-        extracted_data=extracted_data # Добавлено поле
+        extracted_data=extracted_data
     )
     db.add(msg)
     await db.commit()

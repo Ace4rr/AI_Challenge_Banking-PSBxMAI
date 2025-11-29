@@ -1,15 +1,12 @@
 import React, { ReactNode } from 'react';
 
-// Интерфейс для данных ответа AI (должен совпадать с Chat.tsx)
 export interface AIResponseData {
     classification: string;
     answer: string;
     extractedData: string | null;
-    // Это новое поле для передачи компонента EntityDisplay
     extraContent?: ReactNode; 
 }
 
-// Интерфейс для пропсов компонента Message (должен совпадать с Chat.tsx)
 export interface MessageProps {
     id: number;
     userMessage: string;
@@ -17,14 +14,12 @@ export interface MessageProps {
     timestamp: Date;
 }
 
-// --- Компонент Message ---
 
 export const Message: React.FC<MessageProps> = ({ userMessage, aiResponse, timestamp }) => {
     
-    // Форматирование времени
+
     const timeString = timestamp.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-    // Блок сообщения пользователя (синий)
     const renderUserMessage = () => (
         <div className="flex justify-end mb-4">
             <div className="max-w-3xl bg-blue-500 text-white p-4 rounded-t-xl rounded-bl-xl shadow-lg">
@@ -36,7 +31,6 @@ export const Message: React.FC<MessageProps> = ({ userMessage, aiResponse, times
         </div>
     );
 
-    // Блок ответа AI (серый)
     const renderAIResponse = () => (
         <div className="flex justify-start">
             <div className="max-w-3xl bg-gray-200 text-gray-900 p-4 rounded-t-xl rounded-br-xl shadow-lg">

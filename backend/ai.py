@@ -1,22 +1,17 @@
-# backend/ai.py
-
 import os
 import json
 from dotenv import load_dotenv
 
-# Используем только GigaChat из официального SDK
+
 from gigachat import GigaChat 
 
-# !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ SSL - САМЫЙ АГРЕССИВНЫЙ ОБХОД !!!
 import requests 
 import warnings
 
-# Создаем сессию с явным отключением проверки SSL
 requests_session = requests.Session()
 requests_session.verify = False 
 
 try:
-    # Подавляем InsecureRequestWarning, который возникает при requests_session.verify = False
     requests.packages.urllib3.disable_warnings()
     warnings.filterwarnings(
         "ignore", 
@@ -25,12 +20,10 @@ try:
 except Exception:
     pass
 
-# Также устанавливаем переменную окружения для низкоуровневых библиотек
+
 os.environ['PYTHONHTTPSVERIFY'] = '0' 
-# !!! КОНЕЦ ИСПРАВЛЕНИЯ SSL !!!
 
 
-# Загружаем переменные окружения из .env
 load_dotenv() 
 
 GIGACHAT_API_KEY = os.getenv("GIGACHAT_API_KEY")
@@ -50,7 +43,6 @@ if GIGACHAT_API_KEY:
         llm = None
         print(f"!!! Ошибка инициализации GigaChat: {e}. AI будет использовать заглушки. !!!")
     
-# --- Вспомогательная функция для вызова GigaChat ---
 def _call_gigachat(system_prompt: str, user_text: str) -> str:
     """Отправляет запрос в GigaChat, используя объединенный строковый промпт."""
     if llm is None: 
@@ -64,11 +56,9 @@ def _call_gigachat(system_prompt: str, user_text: str) -> str:
     {user_text}
     """
     
-    # Здесь вызывается метод chat, который теперь использует нашу небезопасную сессию
     response = llm.chat(full_prompt) 
     return response.choices[0].message.content.strip()
 
-# --- Логика для классификации ---
 def classify_text(text: str) -> str:
     if llm is None:
         t = text.lower()
@@ -102,11 +92,9 @@ def classify_text(text: str) -> str:
         return "Общее письмо" 
 
     except Exception as e:
-        # Убираем полный трейс SSL, чтобы не загромождать вывод
         print(f"Ошибка при классификации с GigaChat: {e.__class__.__name__} ({e})") 
         return "Общее письмо (ОШИБКА GIGACHAT)"
 
-# --- Логика для генерации ответа ---
 def generate_answer(classification: str, text: str) -> str:
     if llm is None:
         if "жалоба" in classification:
@@ -131,7 +119,6 @@ def generate_answer(classification: str, text: str) -> str:
         print(f"Ошибка при генерации ответа с GigaChat: {e.__class__.__name__} ({e})") 
         return "Произошла ошибка при генерации ответа через GigaChat: ConnectError"
 
-# --- Логика для извлечения сущностей ---
 def extract_entities(text: str) -> str:
     """Извлекает сущности (ФИО, номер счета, дату, сумму) в JSON-формате."""
 

@@ -1,5 +1,3 @@
-
-# Зависимости FastAPI и асинхронной работы с базой данных
 fastapi==0.122.0
 uvicorn==0.30.0
 python-multipart
@@ -8,7 +6,6 @@ sqlalchemy>=2.0.30
 pydantic>=2.7.4
 pydantic-settings>=2.2.1
 
-# Зависимости для обработки файлов и логики
 PyPDF2>=3.0.1 
 python-dotenv>=1.0.1 
 
@@ -19,5 +16,3 @@ python-docx
 requests
 gigachain
 
-# Зависимости для CORS (если не включены с fastapi)
-# fastapi-cors-middleware (обычно не требуется, так как включен в fastapi)

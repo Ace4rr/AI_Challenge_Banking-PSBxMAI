@@ -1,4 +1,3 @@
-// frontend/src/App.tsx
 import "./global.css";
 
 import { Toaster } from "@/components/ui/toaster";
@@ -7,7 +6,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-// НОВЫЙ ИМПОРТ:
 import { AuthProvider } from "../src/context/AuthContext";
 import Index from "./pages/Index";
 import Chat from "./pages/Chat";

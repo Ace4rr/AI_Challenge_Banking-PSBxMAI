@@ -83,24 +83,20 @@ const Chat = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    // --- ФУНКЦИИ БЭКЕНД-ВЗАИМОДЕЙСТВИЯ ---
 
     const transformApiResponse = (msg: ApiMessageResponse): MessageProps => {
         return {
             id: msg.id,
-            // Сообщение клиента всегда user
             userMessage: msg.input_text, 
-            // Ответ от AI
             aiResponse: {
                 classification: msg.classification || "Не классифицировано",
                 answer: msg.generated_answer || "Нет ответа",
-                extractedData: msg.extracted_data || null, // <-- НОВОЕ ПОЛЕ
+                extractedData: msg.extracted_data || null,
             },
             timestamp: new Date(msg.created_at),
         };
     };
 
-    // 1. Загрузка истории
     const fetchHistory = useCallback(async () => {
         if (isHistoryLoaded) return;
         try {
@@ -110,12 +106,10 @@ const Chat = () => {
             setIsHistoryLoaded(true);
         } catch (error) {
             console.error('Ошибка загрузки истории:', error);
-            // При ошибке истории мы всё равно считаем её загруженной, чтобы не повторять запрос
             setIsHistoryLoaded(true); 
         }
     }, [isHistoryLoaded]);
 
-    // 2. Отправка текстового сообщения
     const sendMessage = useCallback(async () => {
         if (!inputText.trim() || isLoading) return;
 
@@ -123,7 +117,6 @@ const Chat = () => {
         setIsLoading(true);
         setInputText(''); 
 
-        // Добавляем сообщение пользователя в список
         const userMsg: MessageProps = {
             id: Date.now(),
             userMessage: text,
@@ -136,11 +129,10 @@ const Chat = () => {
             const response = await axios.post<ApiMessageResponse>(`${API_BASE_URL}/analyze`, { text });
             const aiMsg = transformApiResponse(response.data);
 
-            // Заменяем сообщение-заглушку на полный ответ от AI
             setMessages(prev => prev.map(m => m.id === userMsg.id ? aiMsg : m));
         } catch (error) {
             console.error('Ошибка анализа текста:', error);
-            // Заменяем заглушку на сообщение об ошибке
+
              setMessages(prev => prev.map(m => m.id === userMsg.id ? 
                 {...m, aiResponse: { classification: "Ошибка", answer: "Произошла ошибка при обработке запроса.", extractedData: null}} 
                 : m));
@@ -149,16 +141,16 @@ const Chat = () => {
         }
     }, [inputText, isLoading]);
 
-    // 3. Отправка файла
+
     const sendFile = useCallback(async () => {
         if (!selectedFile || isLoading) return;
 
         setIsLoading(true);
         const file = selectedFile;
-        setSelectedFile(null); // Сбрасываем выбранный файл
-        setFileInputKey(prev => prev + 1); // Сбрасываем input type=file
+        setSelectedFile(null);
+        setFileInputKey(prev => prev + 1);
 
-        // Добавляем сообщение пользователя (файл) в список
+
         const userMsg: MessageProps = {
             id: Date.now(),
             userMessage: `**Файл:** ${file.name} (Размер: ${(file.size / 1024).toFixed(2)} КБ)`,
@@ -179,13 +171,13 @@ const Chat = () => {
 
             const aiMsg = transformApiResponse(response.data);
 
-            // Заменяем сообщение-заглушку на полный ответ от AI
+
             setMessages(prev => prev.map(m => m.id === userMsg.id ? aiMsg : m));
 
         } catch (error: any) {
             console.error('Ошибка анализа файла:', error);
             const errorMessage = error.response?.data?.detail || "Произошла ошибка при обработке файла.";
-            // Заменяем заглушку на сообщение об ошибке
+
              setMessages(prev => prev.map(m => m.id === userMsg.id ? 
                 {...m, aiResponse: { classification: "Ошибка", answer: errorMessage, extractedData: null}} 
                 : m));
@@ -195,7 +187,6 @@ const Chat = () => {
         }
     }, [selectedFile, isLoading]);
     
-    // --- ОБРАБОТЧИКИ СОБЫТИЙ UI ---
 
     const handleFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -212,27 +203,26 @@ const Chat = () => {
         }
     };
 
-    // --- ЭФФЕКТЫ ---
+
 
     useEffect(() => {
-        // Загрузка истории при первом рендере
+
         fetchHistory();
     }, [fetchHistory]);
 
     useEffect(() => {
-        // Прокрутка при добавлении нового сообщения
+
         scrollToBottom();
     }, [messages]);
 
 
-    // --- РЕНДЕРИНГ UI ---
 
     if (!user) {
-        navigate('/login'); // Перенаправляем на логин, если пользователя нет
+        navigate('/login');
         return null;
     }
     
-    // Группировка сообщений по дням (для красоты)
+
     const groupedMessages: { [date: string]: MessageProps[] } = messages.reduce((acc, msg) => {
         const dateKey = msg.timestamp.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
         if (!acc[dateKey]) {

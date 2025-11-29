@@ -1,5 +1,3 @@
-# backend/file_utils.py
-
 from fastapi import UploadFile, HTTPException
 import io
 from PyPDF2 import PdfReader
@@ -7,7 +5,7 @@ from PyPDF2 import PdfReader
 def extract_text_from_file(file: UploadFile) -> str:
     """Извлекает текст из загруженного файла (PDF или TXT)."""
     
-    # 1. Обработка PDF
+
     if file.content_type == "application/pdf":
         try:
             file_content = file.file.read()
@@ -26,7 +24,7 @@ def extract_text_from_file(file: UploadFile) -> str:
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Не удалось извлечь текст из PDF. Возможно, файл защищен или не содержит текста. Ошибка: {e}")
 
-    # 2. Обработка TXT
+
     elif file.content_type == "text/plain":
         try:
             content = file.file.read().decode("utf-8")
@@ -34,7 +32,6 @@ def extract_text_from_file(file: UploadFile) -> str:
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Ошибка при чтении TXT: {e}")
 
-    # 3. Обработка неподдерживаемых типов
     else:
         raise HTTPException(
             status_code=400,

@@ -112,19 +112,19 @@ async def analyze_file(
     """Принимает файл (PDF или TXT), извлекает текст и анализирует его."""
     
     try:
-        # 1. Извлечение текста из файла
+
         text = extract_text_from_file(file)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка обработки файла: {e}")
 
-    # 2. Анализ текста
+
     classification = ai.classify_text(text)
     answer = ai.generate_answer(classification, text)
-    extracted_data = ai.extract_entities(text) # ИЗВЛЕЧЕНИЕ СУЩНОСТЕЙ
+    extracted_data = ai.extract_entities(text)
 
-    # 3. Сохранение в БД
+
     msg = await crud.create_message(
         db, 
         text, 
