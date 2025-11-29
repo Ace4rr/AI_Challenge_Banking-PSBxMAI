@@ -17,6 +17,7 @@ gigachat
 pypdf
 python-docx
 requests
+gigachain
 
 # Зависимости для CORS (если не включены с fastapi)
 # fastapi-cors-middleware (обычно не требуется, так как включен в fastapi)

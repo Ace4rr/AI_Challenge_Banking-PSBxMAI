@@ -1,31 +1,69 @@
 # backend/main.py
 
-from fastapi import FastAPI, Depends, UploadFile, File, HTTPException # ДОБАВЛЕНЫ UploadFile, File, HTTPException
+import sys
+import os
+
+# =================================================================
+# !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПРИНУДИТЕЛЬНОЕ ДОБАВЛЕНИЕ ПУТЕЙ !!!
+# Это обходит ModuleNotFoundError (gigachain) на Windows
+# =================================================================
+try:
+    # 1. Получаем корень проекта: .../AI_Challenge_Banking-PSBxMAI
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
+    
+    # 2. Добавляем корень проекта для правильной работы относительных импортов
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+        print(f"✅ Проектный путь: {project_root} принудительно добавлен в sys.path.")
+        
+    # 3. Проверяем ОБА возможных пути к site-packages в venv и добавляем рабочий
+    
+    # Путь 1 (Стандартный для большинства Python 3.x на Windows)
+    venv_site_packages_lib = os.path.join(project_root, 'venv', 'Lib', 'site-packages')
+    
+    # Путь 2 (Если папка Lib отсутствует)
+    venv_site_packages_nolib = os.path.join(project_root, 'venv', 'site-packages')
+    
+    if os.path.exists(venv_site_packages_lib):
+        if venv_site_packages_lib not in sys.path:
+            sys.path.insert(0, venv_site_packages_lib)
+            print(f"✅ Venv Lib путь: {venv_site_packages_lib} принудительно добавлен в sys.path.")
+    elif os.path.exists(venv_site_packages_nolib):
+        if venv_site_packages_nolib not in sys.path:
+            sys.path.insert(0, venv_site_packages_nolib)
+            print(f"✅ Venv NoLib путь: {venv_site_packages_nolib} принудительно добавлен в sys.path.")
+
+except Exception as e:
+    print(f"❌ Ошибка при попытке исправить путь sys.path: {e}")
+# =================================================================
+
+from fastapi import FastAPI, Depends, UploadFile, File, HTTPException 
 from contextlib import asynccontextmanager 
 from .database import get_db, create_db_and_tables 
 from . import crud, ai, schemas
-from .file_utils import extract_text_from_file # ИМПОРТ НОВОГО МОДУЛЯ
+from .file_utils import extract_text_from_file
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.middleware.cors import CORSMiddleware # Импорт для CORS
+from fastapi.middleware.cors import CORSMiddleware 
 
-# --- 1. Менеджер контекста для жизненного цикла приложения (создание БД) ---
+# --- 1. Менеджер контекста для жизненного цикла приложения ---
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- КОД ЗАПУСКА (СТАРТАП) ---
     await create_db_and_tables() 
     print("Database and tables created successfully!")
     
-    yield # Приложение начинает принимать запросы
+    # Дополнительная проверка, что GigaChat инициализирован
+    from .ai import llm
+    if llm is not None:
+        print("GigaChat клиент успешно инициализирован.")
     
-    # --- КОД ОСТАНОВКИ (ШАТДАУН) ---
+    yield
     print("Application shutting down...")
 
-# --- 2. Инициализация FastAPI с жизненным циклом ---
+# --- 2. Инициализация FastAPI и остальные роуты (без изменений) ---
 
 app = FastAPI(lifespan=lifespan) 
-
-# --- 3. Настройка CORS (ОБЯЗАТЕЛЬНО для работы с фронтендом) ---
 
 origins = ["http://localhost:8080"] 
 
@@ -37,28 +75,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 4. Роут POST /analyze (Отправка нового сообщения в виде текста) ---
+# --- 4. Роут POST /analyze (Текст) ---
 
 @app.post("/analyze", response_model=schemas.MessageOut)
 async def analyze(payload: schemas.MessageCreate, db: AsyncSession = Depends(get_db)):
     text = payload.text
     
-    # 1. Классификация и генерация ответа
+    # 1. Классификация, генерация ответа и извлечение сущностей
     classification = ai.classify_text(text)
     answer = ai.generate_answer(classification, text)
+    extracted_data = ai.extract_entities(text)
 
     # 2. Сохранение в БД
-    msg = await crud.create_message(db, text, classification, answer)
+    msg = await crud.create_message(
+        db, 
+        text, 
+        classification, 
+        answer, 
+        extracted_data
+    )
     return msg
 
-# --- 5. Роут GET /history (Получение истории) ---
+# --- 5. Роут GET /history (История) ---
 
 @app.get("/history", response_model=list[schemas.MessageOut])
 async def get_history(db: AsyncSession = Depends(get_db)):
     messages = await crud.get_messages(db)
     return messages
 
-# --- 6. НОВЫЙ РОУТ: POST /analyze_file (Отправка файла) ---
+# --- 6. Роут POST /analyze_file (Файл) ---
 @app.post("/analyze_file", response_model=schemas.MessageOut)
 async def analyze_file(
     file: UploadFile = File(...), 
@@ -66,20 +111,25 @@ async def analyze_file(
 ):
     """Принимает файл (PDF или TXT), извлекает текст и анализирует его."""
     
-    # 1. Извлечение текста из файла
-    # Если extract_text_from_file вызывает HTTPException, FastAPI автоматически его перехватит.
     try:
+        # 1. Извлечение текста из файла
         text = extract_text_from_file(file)
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        # Для ошибок, не являющихся HTTPException, возвращаем 500
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера при обработке файла: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка обработки файла: {e}")
 
-    # 2. Классификация и генерация ответа (используется существующая логика)
+    # 2. Анализ текста
     classification = ai.classify_text(text)
     answer = ai.generate_answer(classification, text)
+    extracted_data = ai.extract_entities(text) # ИЗВЛЕЧЕНИЕ СУЩНОСТЕЙ
 
     # 3. Сохранение в БД
-    # В БД сохраняем извлеченный текст
-    msg = await crud.create_message(db, text, classification, answer)
-    
+    msg = await crud.create_message(
+        db, 
+        text, 
+        classification, 
+        answer, 
+        extracted_data
+    )
     return msg

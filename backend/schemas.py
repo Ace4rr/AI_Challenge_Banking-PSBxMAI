@@ -10,7 +10,8 @@ class MessageOut(BaseModel):
     input_text: str
     classification: Optional[str]
     generated_answer: Optional[str]
+    extracted_data: Optional[str] # НОВОЕ ПОЛЕ
     created_at: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True # В Pydantic v2 orm_mode переименован в from_attributes

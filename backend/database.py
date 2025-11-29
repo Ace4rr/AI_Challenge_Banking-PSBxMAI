@@ -1,7 +1,8 @@
 # backend/database.py
+
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import text # Оставляем для PRAGMA, но в Postgres не нужно
+from sqlalchemy import text 
 import os
 
 # Используйте переменную окружения или значение по умолчанию для PostgreSQL
@@ -18,9 +19,13 @@ async def get_db():
 
 # Эта функция будет использоваться для создания таблиц
 async def create_db_and_tables():
-    async with engine.begin() as conn:
-        # Убираем строку "PRAGMA foreign_keys = ON;" - она нужна только для SQLite
-        #await conn.execute(text("PRAGMA foreign_keys = ON;")) 
-
-        # Создаем все таблицы, определенные в Base.metadata (в models.py)
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            # Создаем все таблицы, определенные в Base.metadata (в models.py)
+            await conn.run_sync(Base.metadata.create_all)
+        print("Database and tables created successfully!") 
+    except Exception as e:
+        # !!! ВЫВОДИМ ПОДРОБНУЮ ОШИБКУ !!!
+        print(f"!!! КРИТИЧЕСКАЯ ОШИБКА БД: Не удалось создать таблицы. Проверьте PostgreSQL. Ошибка: {e}")
+        # Чтобы uvicorn прекратил запуск и показал ошибку
+        raise e

@@ -9,4 +9,5 @@ class Message(Base):
     input_text = Column(Text, nullable=False)
     classification = Column(Text)
     generated_answer = Column(Text)
+    extracted_data = Column(Text) # НОВОЕ ПОЛЕ
     created_at = Column(DateTime(timezone=True), server_default=func.now())
