@@ -6,15 +6,24 @@ import { useAuth } from '../../src/context/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
-// Интерфейс для ответа от FastAPI
+// Интерфейс для ответа от FastAPI (Обновлен для 8 полей)
 interface ApiMessageResponse {
     id: number;
     input_text: string;
-    classification: string | null;
-    generated_answer: string | null;
+    
+    // Новые имена полей из бэкенда
+    category: string | null;           // Заменило classification
+    official_reply: string | null;     // Заменило generated_answer
+    parameters: string | null;         // Заменило extracted_data
+
+    // 5 новых полей
+    reply_style: string | null;
+    time_to_reply: string | null;
+    summary: string | null;
+    infrastructure_sphere: string | null;
+    risks_and_fixes: string | null;
+
     created_at: string;
-    // !!! НОВОЕ ПОЛЕ !!!
-    extracted_data: string | null; 
 }
 
 // Вспомогательный компонент для отображения структурированных данных
@@ -89,9 +98,18 @@ const Chat = () => {
             id: msg.id,
             userMessage: msg.input_text, 
             aiResponse: {
-                classification: msg.classification || "Не классифицировано",
-                answer: msg.generated_answer || "Нет ответа",
-                extractedData: msg.extracted_data || null,
+                // Маппинг старых полей на новые имена из бэкенда
+                classification: msg.category || "Не классифицировано",
+                answer: msg.official_reply || "Нет ответа",
+                extractedData: msg.parameters || null,
+                
+                // Маппинг 5 новых полей (ОНИ ДОЛЖНЫ БЫТЬ ДОБАВЛЕНЫ В MessageProps)
+                replyStyle: msg.reply_style || null,
+                timeToReply: msg.time_to_reply || null,
+                summary: msg.summary || null,
+                infrastructureSphere: msg.infrastructure_sphere || null,
+                risksAndFixes: msg.risks_and_fixes || null,
+
             },
             timestamp: new Date(msg.created_at),
         };
@@ -133,8 +151,18 @@ const Chat = () => {
         } catch (error) {
             console.error('Ошибка анализа текста:', error);
 
-             setMessages(prev => prev.map(m => m.id === userMsg.id ? 
-                {...m, aiResponse: { classification: "Ошибка", answer: "Произошла ошибка при обработке запроса.", extractedData: null}} 
+            setMessages(prev => prev.map(m => m.id === userMsg.id ? 
+                {...m, aiResponse: { 
+                    classification: "Ошибка", 
+                    answer: "Произошла ошибка при обработке запроса.", 
+                    extractedData: null,
+                    // Заглушки для новых полей, чтобы избежать ошибок TypeScript
+                    replyStyle: null,
+                    timeToReply: null,
+                    summary: null,
+                    infrastructureSphere: null,
+                    risksAndFixes: null,
+                }} 
                 : m));
         } finally {
             setIsLoading(false);
@@ -178,8 +206,18 @@ const Chat = () => {
             console.error('Ошибка анализа файла:', error);
             const errorMessage = error.response?.data?.detail || "Произошла ошибка при обработке файла.";
 
-             setMessages(prev => prev.map(m => m.id === userMsg.id ? 
-                {...m, aiResponse: { classification: "Ошибка", answer: errorMessage, extractedData: null}} 
+            setMessages(prev => prev.map(m => m.id === userMsg.id ? 
+                {...m, aiResponse: { 
+                    classification: "Ошибка", 
+                    answer: errorMessage, 
+                    extractedData: null,
+                    // Заглушки для новых полей
+                    replyStyle: null,
+                    timeToReply: null,
+                    summary: null,
+                    infrastructureSphere: null,
+                    risksAndFixes: null,
+                }} 
                 : m));
 
         } finally {
@@ -270,12 +308,12 @@ const Chat = () => {
                                     <Message 
                                         {...msg} 
                                         // Передаем компонент EntityDisplay, если есть данные
-                                        aiResponse={{
-                                            ...msg.aiResponse!,
-                                            extraContent: msg.aiResponse?.extractedData ? (
+                                        aiResponse={msg.aiResponse ? {
+                                            ...msg.aiResponse,
+                                            extraContent: msg.aiResponse.extractedData ? (
                                                 <EntityDisplay extractedData={msg.aiResponse.extractedData} />
                                             ) : null,
-                                        }}
+                                        } : null}
                                     />
                                 </div>
                             ))}

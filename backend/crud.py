@@ -1,23 +1,53 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from . import models, schemas
+# backend/crud.py
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+# Убедитесь, что Message импортирован правильно из database.py
+from .database import Message 
 
-async def create_message(db: AsyncSession, text: str, classification: str, answer: str, extracted_data: str):
-    """
-    Создает новое сообщение в БД, включая извлеченные сущности.
-    """
-    msg = models.Message(
-        input_text=text, 
-        classification=classification, 
-        generated_answer=answer, 
-        extracted_data=extracted_data
+
+# --- 1. Функция создания сообщения (со всеми 8 новыми полями) ---
+async def create_message(
+    db: AsyncSession, 
+    text: str, 
+    category: str, 
+    official_reply: str, 
+    parameters: str,
+    reply_style: str, 
+    time_to_reply: str, 
+    summary: str, 
+    infrastructure_sphere: str, 
+    risks_and_fixes: str,
+):
+    """Создает и сохраняет новое сообщение в базе данных."""
+    db_message = Message(
+        input_text=text,
+        category=category,
+        official_reply=official_reply,
+        parameters=parameters,
+        
+        # Новые поля
+        reply_style=reply_style,
+        time_to_reply=time_to_reply,
+        summary=summary,
+        infrastructure_sphere=infrastructure_sphere,
+        risks_and_fixes=risks_and_fixes,
     )
-    db.add(msg)
+    
+    db.add(db_message)
     await db.commit()
-    await db.refresh(msg)
-    return msg
+    await db.refresh(db_message)
+    return db_message
 
-async def get_messages(db: AsyncSession, limit: int = 100):
-    q = select(models.Message).order_by(models.Message.created_at.desc()).limit(limit)
-    res = await db.execute(q)
-    return res.scalars().all()
+
+# --- 2. Функция получения всех сообщений (ОТСУТСТВОВАЛА) ---
+async def get_messages(db: AsyncSession):
+    """
+    Возвращает список всех сообщений из БД, отсортированных по дате создания.
+    """
+    # Используем SQLAlchemy 2.0 style select для асинхронной работы
+    result = await db.execute(
+        select(Message).order_by(Message.created_at.desc())
+    )
+    # result.scalars().all() возвращает список объектов Message
+    return result.scalars().all()

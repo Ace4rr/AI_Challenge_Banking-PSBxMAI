@@ -2,6 +2,7 @@
 
 import sys
 import os
+import json # Новый импорт для работы с JSON
 
 # =================================================================
 # !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПРИНУДИТЕЛЬНОЕ ДОБАВЛЕНИЕ ПУТЕЙ !!!
@@ -81,18 +82,29 @@ app.add_middleware(
 async def analyze(payload: schemas.MessageCreate, db: AsyncSession = Depends(get_db)):
     text = payload.text
     
-    # 1. Классификация, генерация ответа и извлечение сущностей
-    classification = ai.classify_text(text)
-    answer = ai.generate_answer(classification, text)
-    extracted_data = ai.extract_entities(text)
+    # 1. Единый вызов для комплексного анализа
+    try:
+        analysis_result = ai.analyze_correspondence(text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка AI-анализа: {e}")
 
-    # 2. Сохранение в БД
+    # 2. Сохранение в БД. 
+    # ВНИМАНИЕ: Предполагается, что crud.create_message в crud.py был обновлен 
+    # для приема всех этих новых параметров.
     msg = await crud.create_message(
         db, 
         text, 
-        classification, 
-        answer, 
-        extracted_data
+        # Старые поля
+        analysis_result.get("category", "Не определено"), # Заменяет classification
+        analysis_result.get("official_reply", "Ошибка генерации ответа."), # Заменяет answer
+        json.dumps(analysis_result.get("parameters", {})), # Заменяет extracted_data
+        
+        # Новые поля
+        analysis_result.get("reply_style", "Не определено"),
+        analysis_result.get("time_to_reply", "Не определено"),
+        analysis_result.get("summary", "Нет резюме."),
+        analysis_result.get("infrastructure_sphere", "Не определено"),
+        analysis_result.get("risks_and_fixes", "Нет рисков."),
     )
     return msg
 
@@ -112,24 +124,35 @@ async def analyze_file(
     """Принимает файл (PDF или TXT), извлекает текст и анализирует его."""
     
     try:
-
         text = extract_text_from_file(file)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка обработки файла: {e}")
 
+    # 1. Единый вызов для комплексного анализа
+    try:
+        analysis_result = ai.analyze_correspondence(text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка AI-анализа: {e}")
 
-    classification = ai.classify_text(text)
-    answer = ai.generate_answer(classification, text)
-    extracted_data = ai.extract_entities(text)
 
-
+    # 2. Сохранение в БД. 
+    # ВНИМАНИЕ: Предполагается, что crud.create_message в crud.py был обновлен 
+    # для приема всех этих новых параметров.
     msg = await crud.create_message(
         db, 
         text, 
-        classification, 
-        answer, 
-        extracted_data
+        # Старые поля
+        analysis_result.get("category", "Не определено"), # Заменяет classification
+        analysis_result.get("official_reply", "Ошибка генерации ответа."), # Заменяет answer
+        json.dumps(analysis_result.get("parameters", {})), # Заменяет extracted_data
+        
+        # Новые поля
+        analysis_result.get("reply_style", "Не определено"),
+        analysis_result.get("time_to_reply", "Не определено"),
+        analysis_result.get("summary", "Нет резюме."),
+        analysis_result.get("infrastructure_sphere", "Не определено"),
+        analysis_result.get("risks_and_fixes", "Нет рисков."),
     )
     return msg

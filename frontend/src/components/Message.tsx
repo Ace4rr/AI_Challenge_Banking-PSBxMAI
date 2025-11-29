@@ -1,16 +1,24 @@
 import React, { ReactNode } from 'react';
 
-export interface AIResponseData {
+export interface AiResponse {
+    // Старые поля (которые вы переименовали)
     classification: string;
     answer: string;
     extractedData: string | null;
-    extraContent?: ReactNode; 
+    extraContent?: React.ReactNode; // Если у вас есть это поле
+    
+    // НОВЫЕ ПОЛЯ, которые вы добавили в Chat.tsx
+    replyStyle: string | null;
+    timeToReply: string | null;
+    summary: string | null;
+    infrastructureSphere: string | null;
+    risksAndFixes: string | null;
 }
 
 export interface MessageProps {
     id: number;
     userMessage: string;
-    aiResponse: AIResponseData | null;
+    aiResponse: AiResponse | null;
     timestamp: Date;
 }
 
