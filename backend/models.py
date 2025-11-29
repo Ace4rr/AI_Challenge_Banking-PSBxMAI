@@ -14,6 +14,9 @@ class Message(Base):
     
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="messages")
+    sla = Column(Text)
+    tone = Column(Text)
+
 
 
 class User(Base):

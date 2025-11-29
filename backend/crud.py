@@ -2,8 +2,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import models, schemas
 from sqlalchemy import select
 
-async def create_message(db: AsyncSession, user_id: int, text: str, classification: str, answer: str):
-    msg = models.Message(input_text=text, classification=classification, generated_answer=answer, user_id=user_id)
+async def create_message(db: AsyncSession, text: str, classification: str, answer: str, user_id: int, sender_role: str, sla: str, tone: str):
+    msg = models.Message(
+        input_text=text,
+        classification=classification,
+        generated_answer=answer,
+        user_id=user_id,
+        sla=sla,
+        tone=tone
+    )
     db.add(msg)
     await db.commit()
     await db.refresh(msg)
@@ -35,3 +42,9 @@ async def get_messages(db: AsyncSession, limit: int = 100):
     q = select(models.Message).order_by(models.Message.created_at.desc()).limit(limit)
     res = await db.execute(q)
     return res.scalars().all()
+
+async def get_user_by_id(db: AsyncSession, user_id: int):
+    result = await db.execute(
+        select(models.User).where(models.User.id == user_id)
+    )
+    return result.scalar_one_or_none()

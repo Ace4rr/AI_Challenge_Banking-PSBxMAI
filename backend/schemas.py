@@ -4,6 +4,9 @@ from datetime import datetime
 
 class MessageCreate(BaseModel):
     text: str
+    sla: Optional[str] = None
+    tone: Optional[str] = None
+
 
 class MessageOut(BaseModel):
     id: int

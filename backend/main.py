@@ -16,15 +16,47 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan) 
 
-
 @app.post("/analyze")
-async def analyze(payload: schemas.MessageCreate,user_id:int, db: AsyncSession = Depends(get_db)):
-    text = payload.text
-    classification = ai.classify_text(text)
-    answer = ai.generate_answer(classification, text)
+async def analyze(
+    payload: schemas.MessageCreate,
+    user_id: int,
+    db: AsyncSession = Depends(get_db)
+):
 
-    msg = await crud.create_message(db, user_id, text, classification, answer)
+    # получаем текст
+    text = payload.text
+
+    # проверяем, что пользователь существует
+    user = await crud.get_user_by_id(db, user_id)
+    if not user:
+        return {"error": f"User with id={user_id} not found"}
+
+    # классификация
+    classification = ai.classify_text(text)
+
+    # определяем тон на основе роли пользователя
+    tone = ai.detect_tone(user.role)
+
+    # генерируем ответ
+    answer = ai.generate_answer(classification, text, tone)
+
+    # sla
+    sla = ai.detect_sla(classification)
+
+    # сохраняем в БД
+    msg = await crud.create_message(
+        db=db,
+        text=text,
+        classification=classification,
+        answer=answer,
+        user_id=user_id,
+        sender_role=user.role,
+        sla=sla,
+        tone=tone
+    )
+
     return msg
+
 
 @app.post("/register",response_model=schemas.UserOut)
 async def register(user: schemas.UserCreate, db: AsyncSession=Depends(get_db)):
