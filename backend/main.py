@@ -22,28 +22,17 @@ async def analyze(
     user_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-
-    # получаем текст
     text = payload.text
-
-    # проверяем, что пользователь существует
     user = await crud.get_user_by_id(db, user_id)
     if not user:
         return {"error": f"User with id={user_id} not found"}
 
-    # классификация
     classification = ai.classify_text(text)
 
-    # определяем тон на основе роли пользователя
     tone = ai.detect_tone(user.role)
-
-    # генерируем ответ
     answer = ai.generate_answer(classification, text, tone)
 
-    # sla
     sla = ai.detect_sla(classification)
-
-    # сохраняем в БД
     msg = await crud.create_message(
         db=db,
         text=text,
